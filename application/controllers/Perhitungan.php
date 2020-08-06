@@ -26,10 +26,11 @@ class Perhitungan extends CI_Controller
     );
     public $populasi = array();
     public $crossover_rate = 0.4;
-    public $mutation_rate = 0.4;
-    public $ukuran_populasi = 5;
+    public $mutation_rate = 0.2;
+    public $ukuran_populasi = 20;
     public $ukuran_generasi = 10;
     public $temp_elitsm = array();
+    public $total_fitness = array();
 
     public function index()
     {
@@ -43,21 +44,24 @@ class Perhitungan extends CI_Controller
 
         $this->perhitungan_kebutuhan_pengguna($this->data_pengguna);
 
-        $this->populasi[1] = $this->populasi_awal($this->ukuran_populasi);
+        $this->populasi[0] = $this->populasi_awal($this->ukuran_populasi);
 
 
-        // $bantu = 0;
-        // for ($i = 1; $i < $this->ukuran_generasi; $i++) {
-        //     $this->populasi[$i] = $this->fungsi_evaluasi($this->populasi[$i], $this->ukuran_populasi);
-        //     $this->populasi[$i] = $this->seleksi($this->populasi[$i], $this->ukuran_populasi);
-        //     $this->populasi[$i] = $this->crossover($this->populasi[$i], $this->ukuran_populasi);
-        // }
+        $bantu = 0;
+        for ($i = 0; $i < $this->ukuran_generasi; $i++) {
+            $this->populasi[$i] = $this->fungsi_evaluasi($this->populasi[$i], $this->ukuran_populasi, $i);
+            $this->populasi[$i] = $this->seleksi($this->populasi[$i], $this->ukuran_populasi);
+            $this->populasi[$i] = $this->crossover($this->populasi[$i], $this->ukuran_populasi);
+            $this->populasi[$i] = $this->mutasi($this->populasi[$i]);
+            $this->populasi[$i+1] = $this->elitism($this->populasi[$i]);
+            $this->populasi[$i+1] = $this->fungsi_evaluasi($this->populasi[$i+1], $this->ukuran_populasi, $i+1);
+        }
 
-        $this->populasi[1] = $this->fungsi_evaluasi($this->populasi[1],$this->ukuran_populasi);
-        $this->populasi[2] = $this->crossover($this->populasi[1],$this->ukuran_populasi);
-        //$this->populasi[3] = $this->mutasi($this->populasi[]);
+        //$this->populasi[1] = $this->fungsi_evaluasi($this->populasi[1], $this->ukuran_populasi);
+        // //$this->populasi[2] = $this->crossover($this->populasi[1],$this->ukuran_populasi);
+        // $this->populasi[3] = $this->mutasi($this->populasi[1]);
 
-        echo json_encode($this->populasi);
+        echo json_encode($a = array("gen"=>$this->populasi,"perubahan"=>$this->total_fitness));
     }
 
     public function perhitungan_kebutuhan_pengguna($data_pengguna)
@@ -103,7 +107,7 @@ class Perhitungan extends CI_Controller
         return $individu;
     }
 
-    public function fungsi_evaluasi($individu, $ukuran_populasi)
+    public function fungsi_evaluasi($individu, $ukuran_populasi,$index)
     {
 
         for ($i = 0; $i < $ukuran_populasi; $i++) {
@@ -116,6 +120,11 @@ class Perhitungan extends CI_Controller
                 $this->temp_elitsm = $individu[$i];
                 $var_bantu = $individu[$i]['nilai_fitness'];
             }
+        }
+
+        $this->total_fitness[$index] = 0;
+        for ($i=0; $i < $this->ukuran_populasi; $i++) { 
+            $this->total_fitness[$index] = $this->total_fitness[$index] + $individu[$i]['nilai_fitness'];
         }
 
         return $individu;
@@ -147,29 +156,28 @@ class Perhitungan extends CI_Controller
                 }
                 $var_bantu = $individu[$j]['fitness_relative'] + 0.000001;
             }
-
         }
 
-        return $in = array("1" => $nilai_roullete, "2" => $individu_roullete);
+        return $individu_roullete;
     }
 
     public function crossover($individu, $ukuran_populasi)
     {
         $nilai_acak = array();
-        
+
         do {
             $var_bantu = 0;
-            for ($i=0; $i < $ukuran_populasi; $i++) { 
+            for ($i = 0; $i < $ukuran_populasi; $i++) {
                 $nilai_acak[$i] = mt_rand() / mt_getrandmax();
                 if ($nilai_acak[$i] <= $this->crossover_rate) {
                     $var_bantu = $var_bantu + 1;
                 }
             }
         } while ($var_bantu <= $this->crossover_rate * $this->ukuran_populasi);
-        
+
 
         $induk = array();
-        for ($i=0; $i < $ukuran_populasi; $i++) { 
+        for ($i = 0; $i < $ukuran_populasi; $i++) {
             if ($nilai_acak[$i] <= $this->crossover_rate) {
                 $induk[$i] = $individu[$i];
             }
@@ -182,29 +190,29 @@ class Perhitungan extends CI_Controller
         $array_bantu = array_keys($induk);
         $array_bantu_2 = array();
         $temp = 0;
-        for ($i=0; $i < count($induk); $i = $i+2) { 
+        for ($i = 0; $i < count($induk); $i = $i + 2) {
             $array_bantu_2[1] = current($induk);
             $array_bantu_2[2] = next($induk);
             $temp = $array_bantu_2[1]['kromosom']['2'];
             $array_bantu_2[1]['kromosom']['2'] = $array_bantu_2[2]['kromosom']['2'];
             $array_bantu_2[2]['kromosom']['2'] = $temp;
-            $induk[$array_bantu[$i]] = $array_bantu_2[1];
-            $induk[$array_bantu[$i+1]] = $array_bantu_2[2];
+            $individu[$array_bantu[$i]] = $array_bantu_2[1];
+            $individu[$array_bantu[$i + 1]] = $array_bantu_2[2];
             next($induk);
         }
 
-        //array_replace_recursive($individu,$induk);
-        
-        return $induk;
+        //array_replace_recursive($individu,$induk); #gak bisa jalan
+
+        return $individu;
     }
 
     public function mutasi($individu)
     {
         $nilai_acak = array();
-        
+
         do {
             $var_bantu = 0;
-            for ($i=0; $i < $this->ukuran_populasi; $i++) { 
+            for ($i = 0; $i < $this->ukuran_populasi; $i++) {
                 $nilai_acak[$i] = mt_rand() / mt_getrandmax();
                 if ($nilai_acak[$i] <= $this->mutation_rate) {
                     $var_bantu = $var_bantu + 1;
@@ -213,7 +221,7 @@ class Perhitungan extends CI_Controller
         } while ($var_bantu <= $this->mutation_rate * $this->ukuran_populasi);
 
         $individu_mutasi = array();
-        for ($i=0; $i < $this->ukuran_populasi; $i++) { 
+        for ($i = 0; $i < $this->ukuran_populasi; $i++) {
             if ($nilai_acak[$i] <= $this->mutation_rate) {
                 $individu_mutasi[$i] = $individu[$i];
             }
@@ -222,15 +230,52 @@ class Perhitungan extends CI_Controller
                 break;
             }
         }
-        
-        $array_bantu = array_keys($individu_mutasi);
-        for ($i=0; $i < count($individu_mutasi); $i++) { 
-            $individu_mutasi[$array_bantu[$i]]['kromosom'][mt_rand(1,3)] = mt_rand(1,40);
-        }
-        
-        array_replace($individu,$individu_mutasi);
 
-        return $acak = array("index"=>$array_bantu, "anak"=>$individu);
+        $array_bantu = array_keys($individu_mutasi);
+        for ($i = 0; $i < count($individu_mutasi); $i++) {
+            $individu[$array_bantu[$i]]['kromosom'][mt_rand(1, 3)] = mt_rand(1, 40);
+        }
+
+        //array_replace($individu,$individu_mutasi);
+
+        return $individu;
+    }
+
+    public function elitism($individu)
+    {
+        $fitness_terburuk = max(array_column($individu, 'nilai_fitness'));
+
+        $index = 0;
+        for ($i=0; $i < $this->ukuran_populasi; $i++) { 
+            if ($individu[$i]['nilai_fitness'] == $fitness_terburuk) {
+                $index = $i;
+            }
+        }
+        $individu[$index] = $this->temp_elitsm;
+
+        $total_kalori = 0;
+        $total_karbohidrat = 0;
+        $total_lemak = 0;
+        $total_protein = 0;
+        for ($i = 0; $i < $this->ukuran_populasi; $i++) {
+            for ($j = 1; $j <= 3; $j++) {
+                $query = $this->menu_model->pilih_detail_menurut_kode($individu[$i]['kromosom'][$j]);
+                $total_kalori += $query->total_kalori_makanan;
+                $total_karbohidrat += $query->total_karbohidrat_makanan;
+                $total_protein += $query->total_protein_makanan;
+                $total_lemak += $query->total_lemak_makanan;
+            }
+            $individu[$i]['total_kalori'] = $total_kalori;
+            $individu[$i]['total_karbo'] = $total_karbohidrat * 4;
+            $individu[$i]['total_protein'] = $total_protein * 4;
+            $individu[$i]['total_lemak'] = $total_lemak * 9;
+            $total_kalori = 0;
+            $total_karbohidrat = 0;
+            $total_protein = 0;
+            $total_lemak = 0;
+        }
+
+        return $individu;
     }
 }
 
