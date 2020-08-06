@@ -193,9 +193,9 @@ class Perhitungan extends CI_Controller
             next($induk);
         }
 
-        //array_replace_recursive($individu,$induk);
+        array_replace_recursive($individu,$induk);
         
-        return $induk;
+        return $individu;
     }
 
     public function mutasi($individu)
